@@ -1,0 +1,19 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Environment variables
+.env
+.env.*
+
+# Development tools
+.pytest_cache/
+.ruff_cache/
+
+# macOS
+.DS_Store
+
+# CS2 demo files
+*.dem
+
