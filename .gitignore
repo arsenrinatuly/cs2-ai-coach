@@ -25,3 +25,6 @@ __pycache__/
 *.dem.zip
 *.dem.rar
 *.dem.7z
+
+# Staged recordings
+.demo-spool/

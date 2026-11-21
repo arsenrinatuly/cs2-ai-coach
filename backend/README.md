@@ -49,3 +49,46 @@ rows with Steam IDs. Both player K/D pairs in the manifest matched (27/1 and
 
 See [Awpy's datasets](https://awpy.readthedocs.io/en/latest/datasets.html)
 and [metric definitions](https://awpy.readthedocs.io/en/latest/reference.html).
+
+## Local upload and worker
+
+Create a local PostgreSQL database and set `DATABASE_URL` to its SQLAlchemy
+connection URL (for example, `postgresql+psycopg:///cs2_coach`). From this
+directory run `uv run alembic upgrade head`. Start the API with
+`uv run uvicorn backend.api:app` and the worker in a second terminal with
+`uv run python -m backend.ingestion`.
+
+```sh
+curl -X POST --data-binary @../demos/valve-de_mirage-472514809.dem \
+  'http://127.0.0.1:8000/matches?filename=valve-de_mirage-472514809.dem'
+```
+
+Poll the returned `status_url` for `queued`, `ready`, or `failed`. Uploads
+are limited to 512 MiB and deduplicated by file SHA-256. The API and worker
+must share the private `DEMO_SPOOL_DIR` (default `.demo-spool`). The
+worker removes staged bytes after the result commits. Interrupted processes
+can leave orphan files. Automatic cleanup and retry policies are tracked
+under ARS-22. Run the storage tests against a migrated, disposable PostgreSQL
+database by setting `TEST_DATABASE_URL`.
+
+For a ready match, `GET /matches/{id}/analytics` returns review metrics.
+Events belong to the latest round whose start is at or before the event tick,
+provided the event is within that round's recorded official end (or end
+when no official end is available). Review metrics exclude knife rounds.
+Kills count deaths credited to an opposing-side attacker. Deaths include
+resolved victims of suicides or world damage. Assists count the recorded
+assister, excluding the attacker and victim, without inferring additional flash
+assists. The first death uses tick order and then source event ordinal.
+Unresolved first victims produce no player attribution for that round.
+
+Round participation here is the set of rounds in which a player is observed
+as an attacker, victim, or assister. Quiet rounds, disconnects, and missing
+events mean this cannot establish full round attendance. ADR and KAST are
+outside this endpoint's contract.
+
+In the public Mirage recording, the last round ends at tick 40132. A world
+death occurs at tick 40220. Awpy's CLI scoreboard includes that death (27/1),
+while the round-bounded review endpoint reports 27/0 for the same player.
+Both workflows match 4/13 for the other manifest player. Set
+`TEST_DEMO_PATH=../demos/valve-de_mirage-472514809.dem` alongside
+`TEST_DATABASE_URL` to reproduce the ingestion and analytics checks.
