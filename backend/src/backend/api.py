@@ -1,20 +1,40 @@
 """HTTP entry point for CS2 AI Coach."""
 
 import hashlib
+import os
 import tempfile
 from pathlib import Path
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
 from backend.analytics import MatchAnalytics, load_analytics
+from backend.coach import (
+    CoachingReport,
+    CoachUnavailable,
+    ReviewContext,
+    generate_report,
+)
 from backend.ingestion import engine, enqueue, spool_dir
 from backend.storage import Match
 
 app = FastAPI(title="CS2 AI Coach")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        origin.strip()
+        for origin in os.environ.get(
+            "WEB_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"
+        ).split(",")
+        if origin.strip()
+    ],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
+)
 
 
 class HealthResponse(BaseModel):
@@ -86,3 +106,15 @@ def match_analytics(match_id: str) -> MatchAnalytics:
         if match.status != "ready":
             raise HTTPException(409, "Match analytics are unavailable.")
         return load_analytics(session, match)
+
+
+@app.post("/matches/{match_id}/players/{steamid}/coach")
+async def player_coach(match_id: str, steamid: str) -> CoachingReport:
+    analytics = await run_in_threadpool(match_analytics, match_id)
+    player = next((row for row in analytics.players if row.steamid == steamid), None)
+    if player is None:
+        raise HTTPException(404, "Player not found in this match.")
+    try:
+        return await generate_report(ReviewContext(match_id, player))
+    except CoachUnavailable as error:
+        raise HTTPException(503, str(error)) from error

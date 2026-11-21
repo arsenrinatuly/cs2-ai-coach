@@ -10,6 +10,8 @@ from pathlib import Path
 from awpy import Demo, InvalidDemoError
 from sqlalchemy import create_engine, select
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.engine import Engine
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from backend.storage import DeathEvent, Match, Participant, Player, Round
@@ -18,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 @lru_cache
-def engine():
+def engine() -> Engine:
     return create_engine(os.environ["DATABASE_URL"], pool_pre_ping=True)
 
 
@@ -92,22 +94,30 @@ def process_next() -> bool:
     with Session(engine()) as session, session.begin():
         match = session.scalar(
             select(Match)
-            .where(Match.status == "queued")
-            .order_by(Match.id)
+            .where(Match.status == "queued", Match.next_attempt_at <= int(time.time()))
+            .order_by(Match.next_attempt_at, Match.id)
             .limit(1)
             .with_for_update(skip_locked=True)
         )
         if match is None:
             return False
 
+        match.attempts += 1
         path = spool_dir() / f"{match.id}.dem"
         try:
             demo = Demo(path)
             participants, rounds, deaths = extract_evidence(demo, match.id)
             map_name = demo.header.get("map_name") or None
-        except (InvalidDemoError, OSError):
+        except InvalidDemoError:
             match.status = "failed"
             match.error = "The demo is corrupt or uses an unsupported recording format."
+        except OSError:
+            if match.attempts < 3:
+                match.next_attempt_at = int(time.time()) + 2**match.attempts
+                logger.warning("Retry scheduled for match %s", match.id)
+                return True
+            match.status = "failed"
+            match.error = "The worker could not read the staged recording."
         else:
             if participants:
                 session.execute(
@@ -134,6 +144,16 @@ def process_next() -> bool:
     return True
 
 
+def clean_terminal_uploads() -> None:
+    with Session(engine()) as session:
+        for path in spool_dir().glob("*.dem"):
+            if len(path.stem) != 64:
+                continue
+            match = session.get(Match, path.stem)
+            if match is not None and match.status in {"ready", "failed"}:
+                path.unlink(missing_ok=True)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--once", action="store_true", help="Process at most one job")
@@ -141,9 +161,18 @@ def main() -> None:
     if args.once:
         process_next()
         return
+    logging.basicConfig(level=logging.INFO)
+    cleanup_at = 0.0
     while True:
-        if not process_next():
-            time.sleep(1)
+        try:
+            if time.monotonic() >= cleanup_at:
+                clean_terminal_uploads()
+                cleanup_at = time.monotonic() + 300
+            if not process_next():
+                time.sleep(1)
+        except (OperationalError, OSError) as error:
+            logger.warning("Worker will reconnect after %s", type(error).__name__)
+            time.sleep(2)
 
 
 if __name__ == "__main__":

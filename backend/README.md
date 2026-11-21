@@ -66,9 +66,9 @@ curl -X POST --data-binary @../demos/valve-de_mirage-472514809.dem \
 Poll the returned `status_url` for `queued`, `ready`, or `failed`. Uploads
 are limited to 512 MiB and deduplicated by file SHA-256. The API and worker
 must share the private `DEMO_SPOOL_DIR` (default `.demo-spool`). The
-worker removes staged bytes after the result commits. Interrupted processes
-can leave orphan files. Automatic cleanup and retry policies are tracked
-under ARS-22. Run the storage tests against a migrated, disposable PostgreSQL
+worker removes staged bytes after the result commits and periodically cleans
+files for terminal matches. Interrupted uploads can leave orphan files. See
+the operations guide for reconciliation and retry behavior. Run the storage tests against a migrated, disposable PostgreSQL
 database by setting `TEST_DATABASE_URL`.
 
 For a ready match, `GET /matches/{id}/analytics` returns review metrics.

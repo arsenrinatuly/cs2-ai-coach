@@ -17,6 +17,8 @@ class Match(Base):
     status: Mapped[str] = mapped_column(String(16))
     map_name: Mapped[str | None] = mapped_column(Text)
     error: Mapped[str | None] = mapped_column(Text)
+    attempts: Mapped[int] = mapped_column(server_default="0")
+    next_attempt_at: Mapped[int] = mapped_column(BigInteger, server_default="0")
 
 
 class Player(Base):

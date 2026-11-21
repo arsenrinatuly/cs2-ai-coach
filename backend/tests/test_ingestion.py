@@ -3,9 +3,10 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import delete
+from sqlalchemy import delete, update
 from sqlalchemy.orm import Session
 
+from backend import ingestion
 from backend.api import app
 from backend.ingestion import engine, process_next
 from backend.storage import Match
@@ -44,7 +45,23 @@ def test_ingest_real_demo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> No
             assert first.json() == repeated.json()
             path = first.json()["status_url"]
             assert client.get(path).json()["status"] == "queued"
+
+            def transient_error(*args, **kwargs):
+                raise OSError("Temporary read failure")
+
+            with monkeypatch.context() as temporary:
+                temporary.setattr(ingestion, "extract_evidence", transient_error)
+                assert process_next()
+                assert not process_next()
+            with Session(engine()) as session, session.begin():
+                match = session.get(Match, ids[-1])
+                assert match.attempts == 1
+                assert match.status == "queued"
+                session.execute(
+                    update(Match).where(Match.id == ids[-1]).values(next_attempt_at=0)
+                )
             assert process_next()
+            assert not process_next()
             assert client.get(path).json()["status"] == "ready"
             assert not list(tmp_path.iterdir())
 
