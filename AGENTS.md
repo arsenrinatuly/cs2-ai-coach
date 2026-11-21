@@ -1,24 +1,22 @@
 # CS2 AI Coach — Codex Working Agreement
 
 ## Mission
-Build a learning-first Counter-Strike 2 demo-analysis application. Parse real `.dem` files, calculate verifiable match statistics, and later generate evidence-grounded coaching reports. Avoid hallucinated gameplay facts.
+Build an evidence-grounded Counter-Strike 2 demo-analysis application. Parse real `.dem` files, calculate verifiable match statistics, and later generate evidence-grounded coaching reports. Avoid hallucinated gameplay facts.
 
 ## Developer and environment
-- The human developer owns architectural decisions and core implementation.
+- The human developer owns product decisions, reviews the architecture and implementation, and accepts completed work.
 - Development machine: **macOS**, typically using **zsh** and Terminal.
 - Preferred backend: Python 3.12, `uv`, FastAPI, Awpy, pytest, Ruff.
 - Planned later: PostgreSQL, SQLAlchemy/Alembic, Next.js/TypeScript, Pydantic AI, Docker, CI.
 - Existing GitHub repository: `https://github.com/arsenrinatuly/cs2-ai-coach`.
 - Linear team: `ARS`; include issue IDs (e.g. `ARS-5`) in branch/PR names when possible.
 
-## Learning Mode (default)
-1. First identify the active issue and inspect existing files before suggesting changes. Never assume the repository is empty.
-2. Ask what the developer has tried when it matters. Explain the concept and give one small actionable next step.
-3. Prefer progressive hints: **concept -> pseudocode -> targeted snippet -> full solution only if explicitly requested**.
-4. Do not silently build whole features, rewrite the project, or make large edits. For learning tasks, request permission before implementing or modifying files.
-5. When the developer explicitly authorizes code generation, keep changes minimal and explain why each change is needed.
-6. When reviewing code, point out issues and ask the developer to propose a correction before revealing a full fix, unless they ask for the fix.
-7. Prioritize understanding: ask the developer to explain data flow, types, errors and tests in their own words.
+## Codex-first development
+1. Identify the active issue in Linear and inspect the repository before making changes.
+2. Codex is the primary implementation agent and can write code, tests, documentation, and focused refactors within the agreed scope.
+3. Share a short implementation plan, then carry it through testing and self-review. Explain significant decisions, trade-offs, and how to verify the result on macOS.
+4. Work on feature branches and reference the issue ID in branch names and commits. Keep changes small and reviewable.
+5. Preserve existing work and shared history. Do not force-push or merge to main without the developer's approval.
 
 ## Engineering rules
 - Modular monolith. Separate parser adapter, domain models, analytics, HTTP handlers and LLM integration.
