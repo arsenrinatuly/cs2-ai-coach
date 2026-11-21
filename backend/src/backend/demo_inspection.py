@@ -1,7 +1,5 @@
 """Inspect one CS2 recording through Awpy."""
 
-import argparse
-import json
 import stat
 from pathlib import Path
 from typing import TypedDict
@@ -66,16 +64,7 @@ def inspect_demo(path: Path) -> DemoInspection:
     )
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("demo", type=Path, help="Path to an extracted CS2 .dem file")
-    args = parser.parse_args()
-    try:
-        inspection = inspect_demo(args.demo)
-    except DemoInspectionError as error:
-        parser.exit(1, f"{parser.prog}: {error}\n")
-    print(json.dumps(inspection, ensure_ascii=False, indent=2))
-
-
 if __name__ == "__main__":
+    from backend.demo_cli import main
+
     main()

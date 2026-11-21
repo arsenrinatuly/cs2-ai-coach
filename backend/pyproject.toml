@@ -6,10 +6,14 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "awpy>=3.3.0",
+    "fastapi>=0.165.0",
+    "pydantic>=2.14.4",
+    "uvicorn>=0.54.0",
 ]
 
 [project.scripts]
 backend = "backend:main"
+inspect-demo = "backend.demo_cli:main"
 
 [build-system]
 requires = ["uv_build>=0.13.9,<0.14.0"]
@@ -17,6 +21,13 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    "httpx2>=2.16.2",
     "pytest>=9.2.0",
     "ruff>=0.17.6",
 ]
+
+[tool.ruff]
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]

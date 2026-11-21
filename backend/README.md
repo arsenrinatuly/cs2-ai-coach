@@ -9,13 +9,14 @@ Keep downloaded archives in the same directory. Git ignores that directory, raw
 ```sh
 cd backend
 uv sync --locked
-uv run python -m backend.demo_inspection ../demos/valve-de_mirage-472514809.dem
+uv run inspect-demo ../demos/valve-de_mirage-472514809.dem
 uv run pytest
 uv run ruff check .
 ```
 
 The inspector also exposes `backend.demo_inspection.inspect_demo(Path(...))`
-for Python callers. The CLI prints JSON to stdout and reports invalid, unreadable,
+for Python callers. The CLI sorts player rows by Steam ID, name, kills, and deaths for stable output.
+The CLI prints JSON to stdout and reports invalid, unreadable,
 or unsupported inputs to stderr with a nonzero exit code.
 
 ## ARS-6 verification
