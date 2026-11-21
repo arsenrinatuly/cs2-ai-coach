@@ -17,3 +17,11 @@ __pycache__/
 # CS2 demo files
 *.dem
 
+/demos/
+*.dem.gz
+*.dem.bz2
+*.dem.xz
+*.dem.zst
+*.dem.zip
+*.dem.rar
+*.dem.7z
