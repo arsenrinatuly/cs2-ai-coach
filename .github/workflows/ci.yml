@@ -49,3 +49,20 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run build
+  containers:
+    runs-on: ubuntu-latest
+    env:
+      POSTGRES_PASSWORD: compose-ci-only
+      DATABASE_URL: postgresql+psycopg://coach:compose-ci-only@db:5432/coach
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose up --build --detach
+      - name: Check running services
+        run: |
+          curl --retry 20 --retry-all-errors --retry-delay 2 --fail http://127.0.0.1:8000/health
+          curl --retry 20 --retry-all-errors --retry-delay 2 --fail http://127.0.0.1:3000/
+          docker compose ps --status running --services | grep -Fx worker
+      - if: failure()
+        run: docker compose logs
+      - if: always()
+        run: docker compose down
