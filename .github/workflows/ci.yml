@@ -1,0 +1,68 @@
+name: CI
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: coach
+          POSTGRES_PASSWORD: ci-only
+          POSTGRES_DB: coach
+        ports:
+          - 5432:5432
+        options: --health-cmd "pg_isready -U coach" --health-interval 2s --health-timeout 3s --health-retries 15
+    env:
+      DATABASE_URL: postgresql+psycopg://coach:ci-only@127.0.0.1:5432/coach
+      TEST_DATABASE_URL: postgresql+psycopg://coach:ci-only@127.0.0.1:5432/coach
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.13.9"
+      - run: uv sync --locked
+      - run: uv run alembic upgrade head
+      - run: uv run alembic check
+      - run: uv run pytest
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+  containers:
+    runs-on: ubuntu-latest
+    env:
+      POSTGRES_PASSWORD: compose-ci-only
+      DATABASE_URL: postgresql+psycopg://coach:compose-ci-only@db:5432/coach
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose up --build --detach
+      - name: Check running services
+        run: |
+          curl --retry 20 --retry-all-errors --retry-delay 2 --fail http://127.0.0.1:8000/health
+          curl --retry 20 --retry-all-errors --retry-delay 2 --fail http://127.0.0.1:3000/
+          docker compose ps --status running --services | grep -Fx worker
+      - if: failure()
+        run: docker compose logs
+      - if: always()
+        run: docker compose down

@@ -25,3 +25,17 @@ __pycache__/
 *.dem.zip
 *.dem.rar
 *.dem.7z
+
+# Staged recordings
+.demo-spool/
+
+# Next.js
+/frontend/node_modules/
+/frontend/.next/
+/frontend/next-env.d.ts
+
+/frontend/*.tsbuildinfo
+
+/frontend/public/demo-sample.json
+.vercel/
+/frontend/out/

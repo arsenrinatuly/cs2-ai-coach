@@ -5,17 +5,18 @@ the header, reconstructed rounds, and event-derived scoreboard. Pydantic
 validates the summary before the CLI sorts player rows and emits JSON. The
 FastAPI app currently exposes health and OpenAPI endpoints.
 
-The planned upload route will validate and stage the recording, then return a
-match ID and processing status. A background worker will claim the job, parse
-it outside the API process, and persist the match, participants, rounds and
-events in PostgreSQL. Durable job status will support bounded retries and
-idempotent processing. A privacy-conscious retention policy will cover raw
-uploads and temporary files.
+The upload route streams recordings to a spool, then returns a match ID.
+A separate process claims queued jobs with PostgreSQL row locks. It extracts
+the match header, participants, rounds, and death events, then commits those
+records together. Duplicate file hashes resolve to the same match ID.
 
-Analytics will derive metrics from persisted events. The web app will use
-stable API contracts to display processing status, metrics and event evidence.
-Coaching will consume server-side analytics and validate report references
-against the match before presenting any observation.
+Analytics derive round-bounded counters and opening deaths. The Next.js app
+polls status and presents event references. The coaching tool reads verified
+opening deaths. Its output is limited to evidence IDs and review focus, and
+the server revalidates references before rendering a factual observation.
+
+The Vercel Hobby sample is a static, de-identified export of one parsed match.
+Local operation runs the upload API, worker, database, and web interface.
 
 Codex implements and verifies changes. The developer owns product decisions
 and reviews evidence, architecture, and reproducible checks.
